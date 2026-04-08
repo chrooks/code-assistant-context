@@ -51,7 +51,12 @@ Example: `/feature franchise cornerstone picker — let users select their franc
 
 3. **Derive a feature slug** in kebab-case from the feature name (e.g. "franchise cornerstone picker" → `franchise-cornerstone-picker`).
 
-4. **Write a questions file** to `docs/features/<feature-slug>/questions.md`. Use this exact structure:
+4. **Create the output directory** if it doesn't exist:
+   ```bash
+   mkdir -p feature_requests
+   ```
+
+5. **Write a questions file** to `feature_requests/<feature-slug>-questions.md`. Use this exact structure:
 
 ```markdown
 # <Feature Name> — Clarifying Questions
@@ -88,10 +93,10 @@ Answer:
 
    If the user provided a reference project or prior implementation in their prompt, include a question about how closely to mirror it and note what can be reused.
 
-5. **Summarize** what you found during the repo scan (3–5 bullets: relevant existing files, patterns to follow, key unknowns).
+6. **Summarize** what you found during the repo scan (3–5 bullets: relevant existing files, patterns to follow, key unknowns).
 
-6. **Tell the user:**
-   > "Questions written to `docs/features/<feature-slug>/questions.md`. Open it, fill in your answers at your own pace, then come back and type **continue** (or just ask any follow-up questions you have)."
+7. **Tell the user:**
+   > "Questions written to `feature_requests/<feature-slug>-questions.md`. Open it, fill in your answers at your own pace, then come back and type **continue** (or just ask any follow-up questions you have)."
 
 **STOP — wait for the user to respond before doing anything else.**
 
@@ -120,9 +125,9 @@ Once all questions have answers, confirm:
 
 ### Steps
 
-1. Read the completed `docs/features/<feature-slug>/questions.md` file.
+1. Read the completed `feature_requests/<feature-slug>-questions.md` file.
 
-2. Write the plan to `docs/features/<feature-slug>/plan.md` with these sections:
+2. Write the plan to `docs/<feature-slug>-plan.md` with these sections:
 
 ```markdown
 # <Feature Name> — Implementation Plan
@@ -200,7 +205,7 @@ Step-by-step instructions for the developer to verify the feature works after im
 3. Present a **brief summary** of the plan to the user (5–10 bullets, not the whole doc).
 
 4. Tell the user:
-   > "Plan written to `docs/features/<feature-slug>/plan.md`. Review it and type **implement** to begin TDD, or tell me what you'd like to change."
+   > "Plan written to `docs/<feature-slug>-plan.md`. Review it and type **implement** to begin TDD, or tell me what you'd like to change."
 
 **STOP — wait for plan approval.**
 
@@ -214,7 +219,7 @@ Step-by-step instructions for the developer to verify the feature works after im
 
 1. **Launch a general-purpose subagent** with this briefing (fill in the actual paths):
 
-   > You are implementing a feature for this codebase. Read the implementation plan at `docs/features/<feature-slug>/plan.md` before writing any code.
+   > You are implementing a feature for this codebase. Read the implementation plan at `docs/<feature-slug>-plan.md` before writing any code.
    >
    > Follow TDD strictly:
    > 1. Write ALL tests first (unit, integration, E2E as specified in the plan) — RED
@@ -232,7 +237,7 @@ Step-by-step instructions for the developer to verify the feature works after im
    Use `isolation: "worktree"` if available, so the implementation is in a clean branch.
 
 2. **After the implementation subagent completes**, launch the **code-reviewer agent** with:
-   > Review all changed files from the feature implementation. Fix any CRITICAL or HIGH risk issues directly. For MEDIUM and LOW risk issues, write them to `docs/features/<feature-slug>/plan.md` under the "Code Review Findings" section (do not fix them unless critical to correctness).
+   > Review all changed files from the feature implementation. Fix any CRITICAL or HIGH risk issues directly. For MEDIUM and LOW risk issues, write them to `docs/<feature-slug>-plan.md` under the "Code Review Findings" section (do not fix them unless critical to correctness).
 
 3. **After both agents complete**, report back to the user:
 
@@ -305,7 +310,7 @@ These let you re-enter the workflow mid-stream (e.g. after reopening Claude):
 
 | File | Path | Purpose |
 |------|------|---------|
-| Questions | `docs/features/<feature-slug>/questions.md` | Discovery output, answered by developer |
-| Plan | `docs/features/<feature-slug>/plan.md` | Implementation spec, code review findings |
+| Questions | `docs/<slug>-questions.md` | Discovery output, answered by developer |
+| Plan | `docs/<slug>-plan.md` | Implementation spec, code review findings |
 
 Both files are committed alongside the feature — they document the decision-making process.
