@@ -1,5 +1,16 @@
 # Development Guidelines
 
+## Tech Stack
+
+Primary languages and frameworks across projects:
+- **Frontend**: TypeScript, React, Next.js
+- **Backend**: Python (Flask/FastAPI), TypeScript (Node.js)
+- **Database**: PostgreSQL (via Supabase)
+
+For language-specific rules, import them in the project-level CLAUDE.md:
+- Python projects: `@~/.claude/rules/python/`
+- TypeScript projects: `@~/.claude/rules/typescript/`
+
 ## Philosophy
 
 ### Core Beliefs
@@ -82,6 +93,14 @@ When implementing or explaining a solution:
 - Follow existing conventions in the project
 - Refer to linter configurations and .editorconfig, if present
 - Text files should always end with an empty line
+
+## Rules
+
+@~/.claude/rules/common/coding-style.md
+@~/.claude/rules/common/git-workflow.md
+@~/.claude/rules/common/security.md
+@~/.claude/rules/common/agents.md
+@~/.claude/rules/common/development-workflow.md
 
 ## MCP Tool Use
 
