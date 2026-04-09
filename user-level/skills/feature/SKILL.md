@@ -1,7 +1,8 @@
 ---
 name: feature
 description: Full-cycle feature development: codebase discovery → clarifying questions → implementation plan → TDD subagent → code review → manual verification → commit. Run with your feature description as the argument.
-origin: custom
+argument-hint: "<description of feature to build>"
+disable-model-invocation: true
 ---
 
 # Feature Development Workflow
@@ -127,7 +128,7 @@ Once all questions have answers, confirm:
 
 1. Read the completed `feature_requests/<feature-slug>-questions.md` file.
 
-2. Write the plan to `docs/<feature-slug>-plan.md` with these sections:
+2. Write the plan to `feature_requests/<feature-slug>-plan.md` with these sections:
 
 ```markdown
 # <Feature Name> — Implementation Plan
@@ -205,7 +206,7 @@ Step-by-step instructions for the developer to verify the feature works after im
 3. Present a **brief summary** of the plan to the user (5–10 bullets, not the whole doc).
 
 4. Tell the user:
-   > "Plan written to `docs/<feature-slug>-plan.md`. Review it and type **implement** to begin TDD, or tell me what you'd like to change."
+   > "Plan written to `feature_requests/<feature-slug>-plan.md`. Review it and type **implement** to begin TDD, or tell me what you'd like to change."
 
 **STOP — wait for plan approval.**
 
@@ -219,7 +220,7 @@ Step-by-step instructions for the developer to verify the feature works after im
 
 1. **Launch a general-purpose subagent** with this briefing (fill in the actual paths):
 
-   > You are implementing a feature for this codebase. Read the implementation plan at `docs/<feature-slug>-plan.md` before writing any code.
+   > You are implementing a feature for this codebase. Read the implementation plan at `feature_requests/<feature-slug>-plan.md` before writing any code.
    >
    > Follow TDD strictly:
    > 1. Write ALL tests first (unit, integration, E2E as specified in the plan) — RED
@@ -237,7 +238,7 @@ Step-by-step instructions for the developer to verify the feature works after im
    Use `isolation: "worktree"` if available, so the implementation is in a clean branch.
 
 2. **After the implementation subagent completes**, launch the **code-reviewer agent** with:
-   > Review all changed files from the feature implementation. Fix any CRITICAL or HIGH risk issues directly. For MEDIUM and LOW risk issues, write them to `docs/<feature-slug>-plan.md` under the "Code Review Findings" section (do not fix them unless critical to correctness).
+   > Review all changed files from the feature implementation. Fix any CRITICAL or HIGH risk issues directly. For MEDIUM and LOW risk issues, write them to `feature_requests/<feature-slug>-plan.md` under the "Code Review Findings" section (do not fix them unless critical to correctness).
 
 3. **After both agents complete**, report back to the user:
 
@@ -313,4 +314,4 @@ These let you re-enter the workflow mid-stream (e.g. after reopening Claude):
 | Questions | `docs/<slug>-questions.md` | Discovery output, answered by developer |
 | Plan | `docs/<slug>-plan.md` | Implementation spec, code review findings |
 
-Both files are committed alongside the feature — they document the decision-making process.
+Both files are gitignored and stay local — they are working documents for your session, not committed alongside the feature.
