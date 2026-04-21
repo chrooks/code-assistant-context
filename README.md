@@ -5,54 +5,54 @@ A portable context library for AI coding assistants (Claude Code, Cursor, etc.).
 ## Structure
 
 ```
-user-level/     # Copy contents to ~/.claude/CLAUDE.md (global, applies to all projects)
-project-level/  # Copy relevant files into a project's CLAUDE.md or context/ directory
+.claude/            # Drop directly into ~ to install user-level config
+  CLAUDE.md         # Global instructions (applies to all projects)
+  commands/         # Claude Code skills (/commit, /feature, /mode, etc.)
+  hooks/            # Session hooks (mode loader, knowledge sync)
+project-level/      # Copy relevant files into a project's CLAUDE.md or context/ directory
 ```
 
-## Usage
+## Quick Install (User-Level)
 
-**Global defaults** — copy `user-level/CLAUDE.md` to `~/.claude/CLAUDE.md`. These apply to every project on the machine.
+```bash
+cp -r .claude ~/
+chmod +x ~/.claude/hooks/*.sh
+```
 
-**Per-project context** — copy files from `project-level/` into your project as needed:
+Or symlink to keep it in sync with this repo:
 
-| File | Purpose |
+```bash
+ln -s "$(pwd)/.claude" ~/.claude
+```
+
+## Commands (Skills)
+
+| Command | Description |
+|---------|-------------|
+| `/commit` | Stage and commit with a conventional commit message |
+| `/feature <description>` | Full-cycle feature development: discovery → plan → TDD → review → commit |
+| `/mode <socratic\|annotator\|standard>` | Switch learning mode for the session |
+| `/capture <concept>` | Save a concept to the project knowledge base and sync to Obsidian |
+| `/sync-knowledge` | Manually sync all knowledge files to Obsidian vault |
+| `/handoff` | Generate a continuation prompt for the next session |
+
+## Hooks
+
+| Hook | Purpose |
 |------|---------|
-| `USE_DESIGN_CONTEXT.md` | Paste into a project's `CLAUDE.md` to activate design guidance |
-| `design-principles.md` | S-tier SaaS design checklist (layout, components, interactions) |
-| `ui-ux-style-guide-reference.md` | Template for generating a project-specific `style-guide.md` |
+| `session-mode-loader.sh` | Restore persisted learning mode on session start |
+| `session-mode-cleanup.sh` | Clear non-persisted mode on session end |
+| `knowledge-sync.sh` | Auto-sync knowledge files to Obsidian vault on write |
 
-## Typical Setup for a New Project
+## Configure Obsidian Vault Sync
 
-1. Add `USE_DESIGN_CONTEXT.md` contents to the project's `CLAUDE.md`
-2. Create a `context/design-principles.md` (copy from here)
-3. Generate a `context/style-guide.md` using `ui-ux-style-guide-reference.md` as the template, filled in with project-specific values
-
-## Learning System Setup
-
-Skills and hooks for the Claude Code learning system (mode switching + knowledge capture):
-
-**Install skills** (copy to `~/.claude/commands/`):
 ```bash
-cp user-level/skills/mode/SKILL.md ~/.claude/commands/mode.md
-cp user-level/skills/capture/SKILL.md ~/.claude/commands/capture.md
-cp user-level/skills/sync-knowledge/SKILL.md ~/.claude/commands/sync-knowledge.md
-```
-
-**Install hooks** (copy to `~/.claude/hooks/`):
-```bash
-cp user-level/hooks/knowledge-sync.sh ~/.claude/hooks/
-cp user-level/hooks/session-mode-loader.sh ~/.claude/hooks/
-cp user-level/hooks/session-mode-cleanup.sh ~/.claude/hooks/
-chmod +x ~/.claude/hooks/knowledge-sync.sh ~/.claude/hooks/session-mode-loader.sh ~/.claude/hooks/session-mode-cleanup.sh
-```
-
-**Configure vault** (copy template and set your path):
-```bash
-cp user-level/hooks/knowledge-config.json.template ~/.claude/knowledge-config.json
+cp ~/.claude/hooks/knowledge-config.json.template ~/.claude/knowledge-config.json
 # Edit vaultPath to your Obsidian vault location
 ```
 
-**Wire up `~/.claude/settings.json`**:
+Wire up `~/.claude/settings.json`:
+
 ```json
 {
   "hooks": {
@@ -62,13 +62,20 @@ cp user-level/hooks/knowledge-config.json.template ~/.claude/knowledge-config.js
 }
 ```
 
-**Usage:**
-- `/mode socratic` — Socratic learning mode (ask guiding questions instead of answering directly)
-- `/mode annotator` — Annotator mode (annotates every architectural decision with prose explanations)
-- `/mode standard` — Default behavior
-- `/mode <mode> --persist` — Persist mode across sessions
-- `/capture "concept name"` — Save a concept to `<project>/knowledge/<concept>.md` + sync to vault
-- `/sync-knowledge` — Manually sync all knowledge files to vault
-
 **Dependency:** `jq` must be installed (`brew install jq`).
 
+## Project-Level Context
+
+Copy files from `project-level/` into a project as needed:
+
+| File | Purpose |
+|------|---------|
+| `USE_DESIGN_CONTEXT.md` | Paste into a project's `CLAUDE.md` to activate design guidance |
+| `context/design-principles.md` | S-tier SaaS design checklist (layout, components, interactions) |
+| `context/ui-ux-style-guide-reference.md` | Template for generating a project-specific `style-guide.md` |
+
+### Typical Setup for a New Project
+
+1. Add `USE_DESIGN_CONTEXT.md` contents to the project's `CLAUDE.md`
+2. Create `context/design-principles.md` (copy from here)
+3. Generate `context/style-guide.md` using `ui-ux-style-guide-reference.md` as the template

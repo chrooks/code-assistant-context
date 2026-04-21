@@ -16,10 +16,12 @@ When the user wants to implement a non-trivial feature end-to-end.
 ## How to Invoke
 
 ```
-/feature <description of what you want to build>
+/feature <description of what you want to build> [--skip-qs]
 ```
 
 Example: `/feature franchise cornerstone picker — let users select their franchise player and assemble an 8-man rotation`
+
+Pass `--skip-qs` to skip Phases 1 & 2 and go straight to plan generation.
 
 ---
 
@@ -38,6 +40,8 @@ Example: `/feature franchise cornerstone picker — let users select their franc
 ## Phase 1: Discovery & Questions
 
 **Goal:** Surface all ambiguities before writing a single line of code.
+
+> If the user passed `--skip-qs`, complete steps 1–3 (acknowledge, scan, derive slug), then skip directly to Phase 3. Do not write a questions file.
 
 ### Steps
 
@@ -128,80 +132,7 @@ Once all questions have answers, confirm:
 
 1. Read the completed `feature_requests/<feature-slug>-questions.md` file.
 
-2. Write the plan to `feature_requests/<feature-slug>-plan.md` with these sections:
-
-```markdown
-# <Feature Name> — Implementation Plan
-
-> **Status:** Approved / In Progress / Complete  
-> **Feature slug:** <slug>  
-> **Date:** <today's date>
-
-## Feature Overview
-<2–3 sentences: what it does, why it exists, what problem it solves>
-
-## Acceptance Criteria
-Numbered list of testable, user-visible outcomes. Each criterion should be verifiable manually and/or automatically.
-
-1. ...
-2. ...
-
-## Architecture Decisions
-Key choices and their rationale (reference specific question answers where relevant).
-
-| Decision | Choice | Reason |
-|----------|--------|--------|
-| ... | ... | ... |
-
-## File Changes
-
-### New Files
-- `path/to/file` — purpose
-
-### Modified Files
-- `path/to/file` — what changes and why
-
-### Deleted Files
-- (if any)
-
-## Data & API Changes
-New endpoints, modified schemas, migrations, seed data. Include request/response shapes for new endpoints.
-
-## Testing Plan
-
-### Unit Tests
-- List of functions/components to unit test and what scenarios to cover
-
-### Integration Tests
-- API endpoints and database interactions to test
-
-### E2E Tests
-- Critical user flows to cover with Playwright/E2E framework
-
-## Implementation Phases
-(Only include if the feature is large enough to split. Otherwise omit this section.)
-
-### Phase 1: <name>
-Scope, deliverables, acceptance criteria subset
-
-### Phase 2: <name>
-...
-
-## Manual Verification Steps
-Step-by-step instructions for the developer to verify the feature works after implementation. Be specific: what to click, what to expect.
-
-1. ...
-2. ...
-
----
-
-## Code Review Findings
-*(Populated after code review — leave blank)*
-
-### Medium Risk
-
-### Low Risk
-```
+2. Read `~/.claude/PLAN.md` for the ExecPlan skeleton and requirements. Write the plan to `feature_requests/<feature-slug>-plan.md` following that skeleton exactly. Fill in every section — do not leave placeholder text.
 
 3. Present a **brief summary** of the plan to the user (5–10 bullets, not the whole doc).
 
@@ -299,7 +230,8 @@ These let you re-enter the workflow mid-stream (e.g. after reopening Claude):
 
 | You type | What happens |
 |----------|-------------|
-| `skip questions` | Skip to Phase 3 (plan generation) using existing answers or best-effort |
+| `--skip-qs` flag at invocation | Skip Phases 1 & 2 entirely, go straight to plan |
+| `skip questions` | Same as above but mid-conversation — skip to Phase 3 using best-effort context |
 | `plan` | Start Phase 3 (assumes questions file exists and is answered) |
 | `implement` | Start Phase 4 (assumes plan file exists and is approved) |
 | `commit` | Jump straight to Phase 5 commit step |

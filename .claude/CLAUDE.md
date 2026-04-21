@@ -1,5 +1,8 @@
 # Development Guidelines
 
+# ExecPlans
+- When writing complex features or significant refactors, use an ExecPlan (as described in ~/.claude/PLAN.md) from design to implementation.
+
 ## Tech Stack
 
 Primary languages and frameworks across projects:
