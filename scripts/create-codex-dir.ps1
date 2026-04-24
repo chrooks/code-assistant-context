@@ -1,3 +1,16 @@
+<#
+.SYNOPSIS
+    Creates Codex-compatible project structure from .claude/ source.
+
+.DESCRIPTION
+    Mapping:
+      .claude/CLAUDE.md       -> AGENTS.md (repo root)
+      .claude/skills/         -> .agents/skills/
+      .claude/commands/       -> skipped (no Codex equivalent)
+      .claude/hooks/          -> skipped (no Codex equivalent)
+      .claude/settings.*.json -> skipped (Codex uses .codex/config.toml)
+#>
+
 [CmdletBinding()]
 param()
 
@@ -7,66 +20,10 @@ $ErrorActionPreference = 'Stop'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 $sourceDir = Join-Path $repoRoot '.claude'
-$targetDir = Join-Path $repoRoot '.codex'
 
 function Write-Log {
     param([string]$Message)
     Write-Host $Message
-}
-
-function Get-RelativePathCompat {
-    param(
-        [string]$BasePath,
-        [string]$TargetPath
-    )
-
-    $pathType = [System.IO.Path]
-    $bindingFlags = [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static
-    $method = $pathType.GetMethod('GetRelativePath', $bindingFlags, $null, [Type[]]@([string], [string]), $null)
-    if ($method) {
-        return $method.Invoke($null, @($BasePath, $TargetPath))
-    }
-
-    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
-    $targetFullPath = [System.IO.Path]::GetFullPath($TargetPath)
-
-    if (-not $baseFullPath.EndsWith([System.IO.Path]::DirectorySeparatorChar) -and
-        -not $baseFullPath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar)) {
-        $baseFullPath = $baseFullPath + [System.IO.Path]::DirectorySeparatorChar
-    }
-
-    $baseUri = [System.Uri]::new($baseFullPath)
-    $targetUri = [System.Uri]::new($targetFullPath)
-
-    if ($baseUri.Scheme -ne $targetUri.Scheme) {
-        return $targetFullPath
-    }
-
-    $relativeUri = $baseUri.MakeRelativeUri($targetUri)
-    $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
-    return $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
-}
-
-function Convert-RelativePathForCodex {
-    param([string]$Path)
-
-    $mapped = $Path.Replace('.claude', '.codex')
-    $mapped = $mapped.Replace('CLAUDE.md', 'AGENTS.md')
-    $mapped = $mapped.Replace('claude', 'codex')
-    $mapped = $mapped.Replace('Claude', 'Codex')
-    return $mapped
-}
-
-function New-DirectoryIfMissing {
-    param([string]$Dir)
-
-    if (Test-Path -LiteralPath $Dir -PathType Container) {
-        Write-Log "Exists $Dir"
-        return
-    }
-
-    [void](New-Item -ItemType Directory -Path $Dir -Force)
-    Write-Log "Creating $Dir"
 }
 
 function Get-RewrittenContent {
@@ -80,15 +37,24 @@ function Get-RewrittenContent {
     return $content
 }
 
+function Test-IsWindowsPlatform {
+    $platform = [Environment]::OSVersion.Platform
+    return (
+        $platform -eq [PlatformID]::Win32NT -or
+        $platform -eq [PlatformID]::Win32S -or
+        $platform -eq [PlatformID]::Win32Windows -or
+        $platform -eq [PlatformID]::WinCE
+    )
+}
+
 function Set-ExecutableModeLikeSource {
     param(
         [string]$Source,
         [string]$Target
     )
 
-    if (Test-IsWindowsPlatform) {
-        return
-    }
+    # File mode bits only relevant on non-Windows platforms running PowerShell Core.
+    if (Test-IsWindowsPlatform) { return }
 
     try {
         $sourceItem = Get-Item -LiteralPath $Source
@@ -120,17 +86,7 @@ function Set-ExecutableModeLikeSource {
     }
 }
 
-function Test-IsWindowsPlatform {
-    $platform = [Environment]::OSVersion.Platform
-    return (
-        $platform -eq [PlatformID]::Win32NT -or
-        $platform -eq [PlatformID]::Win32S -or
-        $platform -eq [PlatformID]::Win32Windows -or
-        $platform -eq [PlatformID]::WinCE
-    )
-}
-
-function Update-RewrittenFile {
+function Copy-Rewritten {
     param(
         [string]$Source,
         [string]$Target,
@@ -143,18 +99,23 @@ function Update-RewrittenFile {
         $content = Get-RewrittenContent -Path $Source
         [System.IO.File]::WriteAllText($tmpFile, $content)
 
+        # Skip if target exists and content is identical.
         if ((Test-Path -LiteralPath $Target -PathType Leaf) -and
             ([System.IO.File]::ReadAllText($tmpFile) -ceq [System.IO.File]::ReadAllText($Target))) {
             Write-Log "Unchanged $DisplayTarget"
             return
         }
 
-        $relativeSource = (Get-RelativePathCompat -BasePath $repoRoot -TargetPath $Source).Replace('\', '/')
+        $verb = if (Test-Path -LiteralPath $Target -PathType Leaf) { 'Updating' } else { 'Copying' }
 
-        if (Test-Path -LiteralPath $Target -PathType Leaf) {
-            Write-Log "Updating $relativeSource -> $DisplayTarget"
-        } else {
-            Write-Log "Copying $relativeSource -> $DisplayTarget"
+        # Build a repo-relative display path for the source.
+        $relSource = $Source.Substring($repoRoot.Length + 1).Replace('\', '/')
+        Write-Log "$verb $relSource -> $DisplayTarget"
+
+        # Ensure parent directory exists.
+        $parentDir = Split-Path -Parent $Target
+        if (-not (Test-Path -LiteralPath $parentDir -PathType Container)) {
+            [void](New-Item -ItemType Directory -Path $parentDir -Force)
         }
 
         Move-Item -LiteralPath $tmpFile -Destination $Target -Force
@@ -167,32 +128,74 @@ function Update-RewrittenFile {
     }
 }
 
+# --- Main ---
+
 if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
     Write-Error "Error: source directory not found: $sourceDir"
 }
 
-Write-Log 'Mirroring .claude -> .codex'
-New-DirectoryIfMissing -Dir $targetDir
+Write-Log 'Creating Codex project structure from .claude/'
 
-$relativeDirs = Get-ChildItem -LiteralPath $sourceDir -Directory -Recurse |
-    ForEach-Object { (Get-RelativePathCompat -BasePath $sourceDir -TargetPath $_.FullName).Replace('\', '/') } |
-    Sort-Object
-
-foreach ($relativeDir in $relativeDirs) {
-    $targetRelative = Convert-RelativePathForCodex -Path $relativeDir
-    New-DirectoryIfMissing -Dir (Join-Path $targetDir $targetRelative)
+# 1. CLAUDE.md -> .agents/AGENTS.md
+$agentsRoot = Join-Path $repoRoot '.agents'
+if (-not (Test-Path -LiteralPath $agentsRoot -PathType Container)) {
+    [void](New-Item -ItemType Directory -Path $agentsRoot -Force)
 }
 
-$relativeFiles = Get-ChildItem -LiteralPath $sourceDir -File -Recurse |
-    ForEach-Object { (Get-RelativePathCompat -BasePath $sourceDir -TargetPath $_.FullName).Replace('\', '/') } |
-    Sort-Object
-
-foreach ($relativeFile in $relativeFiles) {
-    $sourcePath = Join-Path $sourceDir $relativeFile
-    $targetRelative = Convert-RelativePathForCodex -Path $relativeFile
-    $targetPath = Join-Path $targetDir $targetRelative
-    $targetParent = Split-Path -Parent $targetPath
-
-    New-DirectoryIfMissing -Dir $targetParent
-    Update-RewrittenFile -Source $sourcePath -Target $targetPath -DisplayTarget ".codex/$targetRelative"
+$claudeMd = Join-Path $sourceDir 'CLAUDE.md'
+if (Test-Path -LiteralPath $claudeMd -PathType Leaf) {
+    Copy-Rewritten -Source $claudeMd -Target (Join-Path $agentsRoot 'AGENTS.md') -DisplayTarget '.agents/AGENTS.md'
 }
+
+# 2. Skills -> .agents/skills/ (each skill is a subdirectory with SKILL.md)
+$skillsDir = Join-Path $sourceDir 'skills'
+$agentsDir = Join-Path $agentsRoot 'skills'
+
+if (Test-Path -LiteralPath $skillsDir -PathType Container) {
+    if (-not (Test-Path -LiteralPath $agentsDir -PathType Container)) {
+        [void](New-Item -ItemType Directory -Path $agentsDir -Force)
+    }
+    Write-Log 'Creating .agents/skills/'
+
+    # Walk each skill subdirectory.
+    $skillDirs = Get-ChildItem -LiteralPath $skillsDir -Directory | Sort-Object Name
+    foreach ($skillDir in $skillDirs) {
+        $skillName = $skillDir.Name
+        $targetSkillDir = Join-Path $agentsDir $skillName
+
+        if (-not (Test-Path -LiteralPath $targetSkillDir -PathType Container)) {
+            [void](New-Item -ItemType Directory -Path $targetSkillDir -Force)
+        }
+
+        # Copy all files within the skill directory.
+        $skillFiles = Get-ChildItem -LiteralPath $skillDir.FullName -File -Recurse | Sort-Object FullName
+        foreach ($skillFile in $skillFiles) {
+            $relFile = $skillFile.FullName.Substring($skillDir.FullName.Length + 1).Replace('\', '/')
+            Copy-Rewritten `
+                -Source $skillFile.FullName `
+                -Target (Join-Path $targetSkillDir $relFile) `
+                -DisplayTarget ".agents/skills/$skillName/$relFile"
+        }
+    }
+}
+
+# 3. Log skipped directories
+foreach ($skipped in @('commands', 'hooks')) {
+    $skippedPath = Join-Path $sourceDir $skipped
+    if (Test-Path -LiteralPath $skippedPath -PathType Container) {
+        Write-Log "Skipping .claude/$skipped/ (no Codex equivalent)"
+    }
+}
+
+$settingsFiles = Get-ChildItem -LiteralPath $sourceDir -Filter 'settings*.json' -ErrorAction SilentlyContinue
+if ($settingsFiles) {
+    Write-Log 'Skipping .claude/settings*.json (Codex uses .codex/config.toml)'
+}
+
+# 4. Copy PLAN.md if present
+$planMd = Join-Path $sourceDir 'PLAN.md'
+if (Test-Path -LiteralPath $planMd -PathType Leaf) {
+    Copy-Rewritten -Source $planMd -Target (Join-Path $agentsRoot 'PLAN.md') -DisplayTarget '.agents/PLAN.md'
+}
+
+Write-Log 'Done.'
