@@ -35,7 +35,59 @@ function Get-RewrittenContent {
     $content = $content.Replace('CLAUDE.md', 'AGENTS.md')
     $content = $content.Replace('claude', 'codex')
     $content = $content.Replace('Claude', 'Codex')
+
+    if ([System.IO.Path]::GetFileName($Path) -ceq 'SKILL.md') {
+        $content = ConvertTo-YamlSafeSkillFrontmatter -Content $content
+    }
+
     return $content
+}
+
+function ConvertTo-YamlSafeSkillFrontmatter {
+    param([string]$Content)
+
+    if (-not $Content.StartsWith("---")) {
+        return $Content
+    }
+
+    $newline = if ($Content.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $hasTrailingNewline = $Content.EndsWith("`n")
+    $lines = $Content -split '\r?\n', -1
+
+    if ($lines.Length -lt 3 -or $lines[0] -ne '---') {
+        return $Content
+    }
+
+    $endIndex = -1
+    for ($i = 1; $i -lt $lines.Length; $i++) {
+        if ($lines[$i] -eq '---') {
+            $endIndex = $i
+            break
+        }
+    }
+
+    if ($endIndex -lt 0) {
+        return $Content
+    }
+
+    for ($i = 1; $i -lt $endIndex; $i++) {
+        if ($lines[$i] -match '^(description|argument-hint):\s*(.*)$') {
+            $key = $matches[1]
+            $value = $matches[2]
+
+            if (-not ($value.StartsWith('"') -or $value.StartsWith("'"))) {
+                $escapedValue = $value.Replace('\', '\\').Replace('"', '\"')
+                $lines[$i] = "${key}: `"$escapedValue`""
+            }
+        }
+    }
+
+    $rewritten = [string]::Join($newline, $lines)
+    if ($hasTrailingNewline -and -not $rewritten.EndsWith($newline)) {
+        $rewritten += $newline
+    }
+
+    return $rewritten
 }
 
 function Test-IsWindowsPlatform {

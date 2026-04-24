@@ -20,9 +20,67 @@ log() {
   printf '%s\n' "$*"
 }
 
+sanitize_skill_frontmatter() {
+  awk '
+    BEGIN {
+      in_frontmatter = 0
+      frontmatter_delimiters = 0
+    }
+
+    function quote_value(value, escaped) {
+      if (value ~ /^[[:space:]]*["'\''"]/ ) {
+        return value
+      }
+
+      escaped = value
+      gsub(/\\/, "\\\\", escaped)
+      gsub(/"/, "\\\"", escaped)
+      return "\"" escaped "\""
+    }
+
+    /^---[[:space:]]*$/ {
+      frontmatter_delimiters++
+      if (frontmatter_delimiters == 1) {
+        in_frontmatter = 1
+      } else if (frontmatter_delimiters == 2) {
+        in_frontmatter = 0
+      }
+
+      print
+      next
+    }
+
+    {
+      if (in_frontmatter) {
+        key = $0
+        sub(/:.*/, "", key)
+
+        if (key == "description" || key == "argument-hint") {
+          value = $0
+          sub(/^[^:]+:[[:space:]]*/, "", value)
+          print key ": " quote_value(value)
+          next
+        }
+      }
+
+      print
+    }
+  '
+}
+
 # Rewrite text references from Claude conventions to Codex conventions.
 rewrite_content() {
   local source="$1"
+
+  if [ "$(basename "$source")" = "SKILL.md" ]; then
+    sed \
+      -e 's/\.claude/.codex/g' \
+      -e 's/CLAUDE\.md/AGENTS.md/g' \
+      -e 's/claude/codex/g' \
+      -e 's/Claude/Codex/g' \
+      "$source" | sanitize_skill_frontmatter
+    return
+  fi
 
   sed \
     -e 's/\.claude/.codex/g' \
