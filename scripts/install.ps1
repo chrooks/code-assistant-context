@@ -22,7 +22,7 @@ Copy agent config directories from this repo to your home directory.
 
 Flags:
   -Claude   Copy .claude/ to ~/.claude/
-  -Codex    Copy .codex/ to ~/.codex/
+  -Codex    Copy .codex/ to ~/.codex/ and .agents/ to ~/.agents/
   -DryRun   Show what would be copied without doing it
 
 At least one of -Claude or -Codex is required.
@@ -178,6 +178,7 @@ if ($Claude) {
 
 if ($Codex) {
     Copy-AgentDirectory -Source (Join-Path $repoRoot '.codex') -Destination (Join-Path $homeDir '.codex') -Label '.codex'
+    Copy-AgentDirectory -Source (Join-Path $repoRoot '.agents') -Destination (Join-Path $homeDir '.agents') -Label '.agents'
 }
 
 Write-Host ''

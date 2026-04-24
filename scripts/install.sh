@@ -14,7 +14,7 @@ Copy agent config directories from this repo to your home directory.
 
 Flags:
   --claude    Copy .claude/ to ~/.claude/
-  --codex     Copy .codex/ to ~/.codex/
+  --codex     Copy .codex/ to ~/.codex/ and .agents/ to ~/.agents/
   --dry-run   Show what would be copied without doing it
 
 At least one of --claude or --codex is required.
@@ -76,6 +76,7 @@ fi
 
 if $INSTALL_CODEX; then
   install_dir "${REPO_ROOT}/.codex" "${HOME_DIR}/.codex" ".codex"
+  install_dir "${REPO_ROOT}/.agents" "${HOME_DIR}/.agents" ".agents"
 fi
 
 echo ""

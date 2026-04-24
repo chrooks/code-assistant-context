@@ -4,7 +4,8 @@
 
 .DESCRIPTION
     Mapping:
-      .claude/CLAUDE.md       -> AGENTS.md (repo root)
+      .claude/CLAUDE.md       -> .codex/AGENTS.md
+      .claude/PLAN.md         -> .codex/PLAN.md
       .claude/skills/         -> .agents/skills/
       .claude/commands/       -> skipped (no Codex equivalent)
       .claude/hooks/          -> skipped (no Codex equivalent)
@@ -136,19 +137,20 @@ if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
 
 Write-Log 'Creating Codex project structure from .claude/'
 
-# 1. CLAUDE.md -> .agents/AGENTS.md
-$agentsRoot = Join-Path $repoRoot '.agents'
-if (-not (Test-Path -LiteralPath $agentsRoot -PathType Container)) {
-    [void](New-Item -ItemType Directory -Path $agentsRoot -Force)
+# 1. CLAUDE.md -> .codex/AGENTS.md
+$codexDir = Join-Path $repoRoot '.codex'
+if (-not (Test-Path -LiteralPath $codexDir -PathType Container)) {
+    [void](New-Item -ItemType Directory -Path $codexDir -Force)
 }
 
 $claudeMd = Join-Path $sourceDir 'CLAUDE.md'
 if (Test-Path -LiteralPath $claudeMd -PathType Leaf) {
-    Copy-Rewritten -Source $claudeMd -Target (Join-Path $agentsRoot 'AGENTS.md') -DisplayTarget '.agents/AGENTS.md'
+    Copy-Rewritten -Source $claudeMd -Target (Join-Path $codexDir 'AGENTS.md') -DisplayTarget '.codex/AGENTS.md'
 }
 
 # 2. Skills -> .agents/skills/ (each skill is a subdirectory with SKILL.md)
 $skillsDir = Join-Path $sourceDir 'skills'
+$agentsRoot = Join-Path $repoRoot '.agents'
 $agentsDir = Join-Path $agentsRoot 'skills'
 
 if (Test-Path -LiteralPath $skillsDir -PathType Container) {
@@ -192,10 +194,10 @@ if ($settingsFiles) {
     Write-Log 'Skipping .claude/settings*.json (Codex uses .codex/config.toml)'
 }
 
-# 4. Copy PLAN.md if present
+# 4. Copy PLAN.md if present -> .codex/PLAN.md
 $planMd = Join-Path $sourceDir 'PLAN.md'
 if (Test-Path -LiteralPath $planMd -PathType Leaf) {
-    Copy-Rewritten -Source $planMd -Target (Join-Path $agentsRoot 'PLAN.md') -DisplayTarget '.agents/PLAN.md'
+    Copy-Rewritten -Source $planMd -Target (Join-Path $codexDir 'PLAN.md') -DisplayTarget '.codex/PLAN.md'
 }
 
 Write-Log 'Done.'

@@ -3,7 +3,8 @@
 # Creates Codex-compatible project structure from .claude/ source.
 #
 # Mapping:
-#   .claude/CLAUDE.md       -> AGENTS.md (repo root)
+#   .claude/CLAUDE.md       -> .codex/AGENTS.md
+#   .claude/PLAN.md         -> .codex/PLAN.md
 #   .claude/skills/         -> .agents/skills/
 #   .claude/commands/       -> skipped (no Codex equivalent)
 #   .claude/hooks/          -> skipped (no Codex equivalent)
@@ -71,20 +72,20 @@ main() {
 
   log "Creating Codex project structure from .claude/"
 
-  # 1. CLAUDE.md -> .agents/AGENTS.md
-  local agents_root="${REPO_ROOT}/.agents"
-  mkdir -p "$agents_root"
+  # 1. CLAUDE.md -> .codex/AGENTS.md
+  local codex_dir="${REPO_ROOT}/.codex"
+  mkdir -p "$codex_dir"
 
   if [ -f "${SOURCE_DIR}/CLAUDE.md" ]; then
     copy_rewritten \
       "${SOURCE_DIR}/CLAUDE.md" \
-      "${agents_root}/AGENTS.md" \
-      ".agents/AGENTS.md"
+      "${codex_dir}/AGENTS.md" \
+      ".codex/AGENTS.md"
   fi
 
   # 2. Skills -> .agents/skills/ (each skill is a subdirectory with SKILL.md)
   local skills_dir="${SOURCE_DIR}/skills"
-  local agents_dir="${agents_root}/skills"
+  local agents_dir="${REPO_ROOT}/.agents/skills"
 
   if [ -d "$skills_dir" ]; then
     mkdir -p "$agents_dir"
@@ -119,12 +120,12 @@ main() {
     log "Skipping .claude/settings*.json (Codex uses .codex/config.toml)"
   fi
 
-  # 4. Copy PLAN.md if present
+  # 4. Copy PLAN.md if present -> .codex/PLAN.md
   if [ -f "${SOURCE_DIR}/PLAN.md" ]; then
     copy_rewritten \
       "${SOURCE_DIR}/PLAN.md" \
-      "${agents_root}/PLAN.md" \
-      ".agents/PLAN.md"
+      "${codex_dir}/PLAN.md" \
+      ".codex/PLAN.md"
   fi
 
   log "Done."
