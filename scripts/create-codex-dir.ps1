@@ -14,7 +14,40 @@ function Write-Log {
     Write-Host $Message
 }
 
-function Map-RelativePath {
+function Get-RelativePathCompat {
+    param(
+        [string]$BasePath,
+        [string]$TargetPath
+    )
+
+    $pathType = [System.IO.Path]
+    $bindingFlags = [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static
+    $method = $pathType.GetMethod('GetRelativePath', $bindingFlags, $null, [Type[]]@([string], [string]), $null)
+    if ($method) {
+        return $method.Invoke($null, @($BasePath, $TargetPath))
+    }
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    $targetFullPath = [System.IO.Path]::GetFullPath($TargetPath)
+
+    if (-not $baseFullPath.EndsWith([System.IO.Path]::DirectorySeparatorChar) -and
+        -not $baseFullPath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar)) {
+        $baseFullPath = $baseFullPath + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    $baseUri = [System.Uri]::new($baseFullPath)
+    $targetUri = [System.Uri]::new($targetFullPath)
+
+    if ($baseUri.Scheme -ne $targetUri.Scheme) {
+        return $targetFullPath
+    }
+
+    $relativeUri = $baseUri.MakeRelativeUri($targetUri)
+    $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
+    return $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+}
+
+function Convert-RelativePathForCodex {
     param([string]$Path)
 
     $mapped = $Path.Replace('.claude', '.codex')
@@ -24,7 +57,7 @@ function Map-RelativePath {
     return $mapped
 }
 
-function Ensure-Dir {
+function New-DirectoryIfMissing {
     param([string]$Dir)
 
     if (Test-Path -LiteralPath $Dir -PathType Container) {
@@ -53,7 +86,7 @@ function Set-ExecutableModeLikeSource {
         [string]$Target
     )
 
-    if ($IsWindows) {
+    if (Test-IsWindowsPlatform) {
         return
     }
 
@@ -87,7 +120,17 @@ function Set-ExecutableModeLikeSource {
     }
 }
 
-function Rewrite-File {
+function Test-IsWindowsPlatform {
+    $platform = [Environment]::OSVersion.Platform
+    return (
+        $platform -eq [PlatformID]::Win32NT -or
+        $platform -eq [PlatformID]::Win32S -or
+        $platform -eq [PlatformID]::Win32Windows -or
+        $platform -eq [PlatformID]::WinCE
+    )
+}
+
+function Update-RewrittenFile {
     param(
         [string]$Source,
         [string]$Target,
@@ -106,7 +149,7 @@ function Rewrite-File {
             return
         }
 
-        $relativeSource = [System.IO.Path]::GetRelativePath($repoRoot, $Source).Replace('\', '/')
+        $relativeSource = (Get-RelativePathCompat -BasePath $repoRoot -TargetPath $Source).Replace('\', '/')
 
         if (Test-Path -LiteralPath $Target -PathType Leaf) {
             Write-Log "Updating $relativeSource -> $DisplayTarget"
@@ -129,27 +172,27 @@ if (-not (Test-Path -LiteralPath $sourceDir -PathType Container)) {
 }
 
 Write-Log 'Mirroring .claude -> .codex'
-Ensure-Dir -Dir $targetDir
+New-DirectoryIfMissing -Dir $targetDir
 
 $relativeDirs = Get-ChildItem -LiteralPath $sourceDir -Directory -Recurse |
-    ForEach-Object { [System.IO.Path]::GetRelativePath($sourceDir, $_.FullName).Replace('\', '/') } |
+    ForEach-Object { (Get-RelativePathCompat -BasePath $sourceDir -TargetPath $_.FullName).Replace('\', '/') } |
     Sort-Object
 
 foreach ($relativeDir in $relativeDirs) {
-    $targetRelative = Map-RelativePath -Path $relativeDir
-    Ensure-Dir -Dir (Join-Path $targetDir $targetRelative)
+    $targetRelative = Convert-RelativePathForCodex -Path $relativeDir
+    New-DirectoryIfMissing -Dir (Join-Path $targetDir $targetRelative)
 }
 
 $relativeFiles = Get-ChildItem -LiteralPath $sourceDir -File -Recurse |
-    ForEach-Object { [System.IO.Path]::GetRelativePath($sourceDir, $_.FullName).Replace('\', '/') } |
+    ForEach-Object { (Get-RelativePathCompat -BasePath $sourceDir -TargetPath $_.FullName).Replace('\', '/') } |
     Sort-Object
 
 foreach ($relativeFile in $relativeFiles) {
     $sourcePath = Join-Path $sourceDir $relativeFile
-    $targetRelative = Map-RelativePath -Path $relativeFile
+    $targetRelative = Convert-RelativePathForCodex -Path $relativeFile
     $targetPath = Join-Path $targetDir $targetRelative
     $targetParent = Split-Path -Parent $targetPath
 
-    Ensure-Dir -Dir $targetParent
-    Rewrite-File -Source $sourcePath -Target $targetPath -DisplayTarget ".codex/$targetRelative"
+    New-DirectoryIfMissing -Dir $targetParent
+    Update-RewrittenFile -Source $sourcePath -Target $targetPath -DisplayTarget ".codex/$targetRelative"
 }
